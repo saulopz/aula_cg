@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Computação Gráfica: Redimensionamento</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+    <style>
+        body { font-family: sans-serif; background: #1e1e1e; color: #fff; margin: 20px; }
+        .controls { background: #2d2d2d; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .canvas-container { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px; }
+        .box { background: #252526; padding: 10px; border-radius: 5px; border: 1px solid #3c3c3c; }
+        canvas { background: #000; display: block; margin-top: 5px; }
+        .code-container { background: #252526; padding: 15px; border-radius: 5px; border: 1px solid #3c3c3c; }
+        .code-container h3 { margin-top: 0; color: #4ec9b0; }
+        pre[class*="language-"] { margin: 0; border-radius: 5px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <h2>Amostragem de Imagem: Nearest Neighbor</h2>
+
+    <div class="controls">
+        <label>Escolha a imagem: <input type="file" id="upload" accept="image/*"></label>
+        <br><br>
+        <label>Escala (%): <input type="number" id="proportion" value="50" min="10" max="500"></label>
+        <button id="btnProcess">Executar Redimensionamento</button>
+    </div>
+
+    <div class="canvas-container">
+        <div class="box">
+            <h3>Original</h3>
+            <canvas id="canvasOrig"></canvas>
+        </div>
+        <div class="box">
+            <h3>Resultado (Destino)</h3>
+            <canvas id="canvasDest"></canvas>
+        </div>
+    </div>
+
+    <div class="code-container">
+        <h3>Algoritmo de Processamento (JavaScript)</h3>
+        <pre><code id="codeBlock" class="language-javascript"></code></pre>
+    </div>
+
+    <!-- Importa a biblioteca auxiliar primeiro -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="cg-canvas.js"></script>
+    <!-- Importa o script do algoritmo -->
+    <script src="resize.js"></script>
+</body>
+</html>
