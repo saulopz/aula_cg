@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Exemplo 6: Distância e Ângulo entre Cliques</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #222;
+        color: #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        background: white;
+        margin-top: 20px;
+        border: 1px solid #555;
+        cursor: crosshair;
+      }
+      .info {
+        margin-top: 10px;
+        font-size: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Exemplo 6: Clique para definir os pontos</h2>
+    <canvas id="canvas" width="700" height="450"></canvas>
+    <p class="info">
+      Primeiro clique define o Ponto A. Segundo clique define o Ponto B e
+      calcula distância e ângulo. Os próximos cliques repetem o ciclo, usando o
+      B anterior como novo A.
+    </p>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      class Point2D {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+      }
+
+      class Vector2D {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+        size() {
+          return Math.sqrt(this.x * this.x + this.y * this.y);
+        }
+      }
+
+      function toDegrees(radians) {
+        return (radians * 180) / Math.PI;
+      }
+
+      function distance(p1, p2) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function vectorAngle(v) {
+        return Math.atan2(v.y, v.x);
+      }
+
+      function drawLine(ctx, p1, p2) {
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      function drawPoint(ctx, p, label) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "black";
+        ctx.fill();
+        ctx.font = "14px sans-serif";
+        ctx.fillText(label, p.x + 8, p.y - 8);
+      }
+
+      let pointA = null;
+      let pointB = null;
+
+      function draw() {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (pointA) drawPoint(ctx, pointA, "A");
+
+        if (pointA && pointB) {
+          drawLine(ctx, pointA, pointB);
+          drawPoint(ctx, pointB, "B");
+
+          const d = distance(pointA, pointB);
+          const v = new Vector2D(pointB.x - pointA.x, pointB.y - pointA.y);
+          const angleDeg = toDegrees(vectorAngle(v));
+
+          ctx.fillStyle = "black";
+          ctx.font = "16px sans-serif";
+          ctx.fillText(`Distância: ${d.toFixed(2)} px`, 10, 20);
+          ctx.fillText(`Ângulo: ${angleDeg.toFixed(2)}°`, 10, 40);
+        }
+      }
+
+      canvas.addEventListener("click", (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const clicked = new Point2D(
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+        );
+
+        if (pointA === null) {
+          pointA = clicked;
+          pointB = null;
+        } else if (pointB === null) {
+          pointB = clicked;
+        } else {
+          // Ciclo: o B atual vira o A do próximo par
+          pointA = pointB;
+          pointB = clicked;
+        }
+
+        draw();
+      });
+
+      draw();
+    </script>
+  </body>
+</html>

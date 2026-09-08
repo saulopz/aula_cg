@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Exemplo 2: Distância Euclidiana</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #222;
+        color: #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        background: white;
+        margin-top: 20px;
+        border: 1px solid #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Exemplo 2: Distância Euclidiana</h2>
+    <canvas id="canvas" width="500" height="400"></canvas>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      class Point2D {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+      }
+
+      function drawLine(ctx, p1, p2) {
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      function drawPoint(ctx, p, label) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        ctx.font = "14px sans-serif";
+        ctx.fillText(label, p.x + 8, p.y - 8);
+      }
+
+      // --- Distância Euclidiana ---
+      function distance(p1, p2) {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function draw() {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const pointA = new Point2D(80, 300);
+        const pointB = new Point2D(400, 100);
+
+        drawLine(ctx, pointA, pointB);
+        drawPoint(ctx, pointA, "A");
+        drawPoint(ctx, pointB, "B");
+
+        const d = distance(pointA, pointB);
+
+        ctx.fillStyle = "black";
+        ctx.font = "16px sans-serif";
+        ctx.fillText(`Distância entre A e B: ${d.toFixed(2)}`, 10, 20);
+      }
+
+      draw();
+    </script>
+  </body>
+</html>

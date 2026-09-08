@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Exemplo 5: Produto Escalar e Ângulo entre Vetores</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #222;
+        color: #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        background: white;
+        margin-top: 20px;
+        border: 1px solid #555;
+      }
+      .info {
+        margin-top: 10px;
+        font-size: 15px;
+        line-height: 1.6;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Exemplo 5: Produto Escalar (mova o mouse: Vetor B segue o ponteiro)</h2>
+    <canvas id="canvas" width="500" height="400"></canvas>
+    <div class="info" id="info"></div>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const info = document.getElementById("info");
+
+      class Vector2D {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+        size() {
+          return Math.sqrt(this.x * this.x + this.y * this.y);
+        }
+      }
+
+      function toDegrees(radians) {
+        return (radians * 180) / Math.PI;
+      }
+
+      function dot(a, b) {
+        return a.x * b.x + a.y * b.y;
+      }
+
+      function angleBetween(a, b) {
+        const sizeProduct = a.size() * b.size();
+        if (sizeProduct === 0) return 0;
+
+        let cosAngle = dot(a, b) / sizeProduct;
+        cosAngle = Math.max(-1, Math.min(1, cosAngle));
+
+        const angle = Math.acos(cosAngle);
+
+        // produto vetorial 2D, usado só para decidir o sinal (sentido) do ângulo
+        const cross = a.x * b.y - a.y * b.x;
+        return cross >= 0 ? angle : -angle;
+      }
+
+      function drawVector(ctx, origin, v, color, label) {
+        const endX = origin.x + v.x;
+        const endY = origin.y + v.y;
+
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        const angle = Math.atan2(v.y, v.x);
+        const headLength = 10;
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(
+          endX - headLength * Math.cos(angle - Math.PI / 6),
+          endY - headLength * Math.sin(angle - Math.PI / 6),
+        );
+        ctx.lineTo(
+          endX - headLength * Math.cos(angle + Math.PI / 6),
+          endY - headLength * Math.sin(angle + Math.PI / 6),
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.font = "13px sans-serif";
+        ctx.fillText(label, endX + 6, endY);
+      }
+
+      const origin = { x: 100, y: 300 };
+      const vectorA = new Vector2D(280, 0); // fixo, apontando para a direita
+      let mouse = { x: 300, y: 150 };
+
+      function draw() {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const vectorB = new Vector2D(mouse.x - origin.x, mouse.y - origin.y);
+
+        drawVector(ctx, origin, vectorA, "#e63946", "A");
+        drawVector(ctx, origin, vectorB, "#457b9d", "B");
+
+        const d = dot(vectorA, vectorB);
+        const angleRad = angleBetween(vectorA, vectorB);
+        const angleDeg = toDegrees(angleRad);
+
+        info.innerHTML = `
+    A · B (produto escalar) = ${d.toFixed(1)}<br>
+    Ângulo entre A e B: ${angleDeg.toFixed(1)}°
+  `;
+      }
+
+      canvas.addEventListener("mousemove", (event) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = event.clientX - rect.left;
+        mouse.y = event.clientY - rect.top;
+        draw();
+      });
+
+      draw();
+    </script>
+  </body>
+</html>

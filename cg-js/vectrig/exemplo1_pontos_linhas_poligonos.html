@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Exemplo 1: Pontos, Linhas e Polígonos</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #222;
+        color: #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        background: white;
+        margin-top: 20px;
+        border: 1px solid #555;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Exemplo 1: Pontos, Linhas e Polígonos</h2>
+    <canvas id="canvas" width="500" height="400"></canvas>
+
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // --- Classe Point2D ---
+      class Point2D {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+        }
+      }
+
+      // --- Desenhar uma linha entre dois pontos ---
+      function drawLine(ctx, p1, p2) {
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // --- Desenhar um polígono a partir de uma lista de pontos ---
+      function drawPolygon(ctx, points) {
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "blue";
+        ctx.fill();
+      }
+
+      // --- Desenho principal ---
+      function draw() {
+        // Fundo branco
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Linha: do ponto (30, 50) ao ponto (180, 200)
+        drawLine(ctx, new Point2D(30, 50), new Point2D(180, 200));
+
+        // Polígono: pentágono com 5 pontos
+        const pentagon = [
+          new Point2D(200, 100),
+          new Point2D(300, 50),
+          new Point2D(400, 100),
+          new Point2D(350, 200),
+          new Point2D(250, 200),
+        ];
+        drawPolygon(ctx, pentagon);
+      }
+
+      draw();
+    </script>
+  </body>
+</html>
