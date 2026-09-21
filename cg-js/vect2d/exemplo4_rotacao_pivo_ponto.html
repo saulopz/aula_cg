@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 4: Rotação com Pivô no Primeiro Ponto</title>
+<style>
+  body { font-family: sans-serif; background: #222; color: #eee; display: flex; flex-direction: column; align-items: center; }
+  canvas { background: white; margin-top: 20px; border: 1px solid #555; }
+  .controls { margin-top: 12px; }
+  .controls label { display: flex; flex-direction: column; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h2>Exemplo 4: Rotação (pivô = primeiro ponto)</h2>
+<canvas id="canvas" width="600" height="400"></canvas>
+
+<div class="controls">
+  <label>Ângulo: <span id="angleValue">0°</span>
+    <input type="range" id="angle" min="0" max="360" value="0">
+  </label>
+</div>
+
+<script>
+// --- Ponto e transformações (idênticos à página prática da wiki) ---
+
+class Point2D {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+}
+
+function translate(points, tx, ty) {
+  for (const p of points) {
+    p.x += tx;
+    p.y += ty;
+  }
+}
+
+function rotate(points, angleRadians) {
+  const pivot = { x: points[0].x, y: points[0].y };
+
+  translate(points, -pivot.x, -pivot.y);
+  for (const p of points) {
+    const x2 = p.x * Math.cos(angleRadians) - p.y * Math.sin(angleRadians);
+    const y2 = p.x * Math.sin(angleRadians) + p.y * Math.cos(angleRadians);
+    p.x = x2;
+    p.y = y2;
+  }
+  translate(points, pivot.x, pivot.y);
+}
+
+// --- Desenho ---
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const original = [
+  new Point2D(250, 250),
+  new Point2D(350, 150),
+  new Point2D(450, 250),
+];
+
+function drawPolygon(points, color) {
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawPivot(p) {
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "black";
+  ctx.fill();
+  ctx.font = "12px sans-serif";
+  ctx.fillText("pivô", p.x + 6, p.y - 6);
+}
+
+function render() {
+  const angleDeg = Number(angleInput.value);
+  angleValue.textContent = `${angleDeg}°`;
+
+  const rotated = original.map((p) => new Point2D(p.x, p.y));
+  rotate(rotated, (angleDeg * Math.PI) / 180);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawPolygon(original, "#bbb");
+  drawPolygon(rotated, "#e63946");
+  drawPivot(original[0]);
+}
+
+const angleInput = document.getElementById("angle");
+const angleValue = document.getElementById("angleValue");
+
+angleInput.addEventListener("input", render);
+
+render();
+</script>
+
+</body>
+</html>

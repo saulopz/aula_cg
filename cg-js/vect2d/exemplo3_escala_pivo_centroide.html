@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 3: Escala com Pivô no Centroide</title>
+<style>
+  body { font-family: sans-serif; background: #222; color: #eee; display: flex; flex-direction: column; align-items: center; }
+  canvas { background: white; margin-top: 20px; border: 1px solid #555; }
+  .controls { margin-top: 12px; display: flex; gap: 24px; }
+  .controls label { display: flex; flex-direction: column; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h2>Exemplo 3: Escala (pivô = centroide)</h2>
+<canvas id="canvas" width="600" height="400"></canvas>
+
+<div class="controls">
+  <label>Sx: <span id="sxValue">1.0</span>
+    <input type="range" id="sx" min="0.2" max="2.5" step="0.1" value="1">
+  </label>
+  <label>Sy: <span id="syValue">1.0</span>
+    <input type="range" id="sy" min="0.2" max="2.5" step="0.1" value="1">
+  </label>
+</div>
+
+<script>
+// --- Ponto e transformações (idênticos à página prática da wiki) ---
+
+class Point2D {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+}
+
+function translate(points, tx, ty) {
+  for (const p of points) {
+    p.x += tx;
+    p.y += ty;
+  }
+}
+
+function centroid(points) {
+  let sumX = 0;
+  let sumY = 0;
+  for (const p of points) {
+    sumX += p.x;
+    sumY += p.y;
+  }
+  return new Point2D(sumX / points.length, sumY / points.length);
+}
+
+// Mesma lógica do exemplo anterior, só que o pivô agora vem de centroid(points)
+// em vez de points[0]
+function scale(points, sx, sy) {
+  const pivot = centroid(points);
+
+  translate(points, -pivot.x, -pivot.y);
+  for (const p of points) {
+    p.x *= sx;
+    p.y *= sy;
+  }
+  translate(points, pivot.x, pivot.y);
+}
+
+// --- Desenho ---
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const original = [
+  new Point2D(250, 250),
+  new Point2D(350, 150),
+  new Point2D(450, 250),
+];
+
+function drawPolygon(points, color) {
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawPivot(p) {
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "black";
+  ctx.fill();
+  ctx.font = "12px sans-serif";
+  ctx.fillText("pivô (centroide)", p.x + 6, p.y - 6);
+}
+
+function render() {
+  const sx = Number(sxInput.value);
+  const sy = Number(syInput.value);
+  sxValue.textContent = sx.toFixed(1);
+  syValue.textContent = sy.toFixed(1);
+
+  const scaled = original.map((p) => new Point2D(p.x, p.y));
+  const pivot = centroid(original);
+  scale(scaled, sx, sy);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawPolygon(original, "#bbb");
+  drawPolygon(scaled, "#457b9d");
+  drawPivot(pivot);
+}
+
+const sxInput = document.getElementById("sx");
+const syInput = document.getElementById("sy");
+const sxValue = document.getElementById("sxValue");
+const syValue = document.getElementById("syValue");
+
+sxInput.addEventListener("input", render);
+syInput.addEventListener("input", render);
+
+render();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 1: Translação no Espaço (3D)</title>
+<style>
+  body { font-family: sans-serif; background: #222; color: #eee; display: flex; flex-direction: column; align-items: center; }
+  canvas { background: white; margin-top: 20px; border: 1px solid #555; }
+  .controls { margin-top: 12px; display: flex; gap: 24px; }
+  .controls label { display: flex; flex-direction: column; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h2>Exemplo 1: Translação no Espaço</h2>
+<canvas id="canvas" width="600" height="400"></canvas>
+
+<div class="controls">
+  <label>Tx: <span id="txValue">0</span>
+    <input type="range" id="tx" min="-100" max="100" value="0">
+  </label>
+  <label>Ty: <span id="tyValue">0</span>
+    <input type="range" id="ty" min="-100" max="100" value="0">
+  </label>
+  <label>Tz: <span id="tzValue">0</span>
+    <input type="range" id="tz" min="-150" max="150" value="0">
+  </label>
+</div>
+
+<script>
+// --- Ponto e transformação (idênticos à página prática da wiki) ---
+
+class Point3D {
+  constructor(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+}
+
+function translate(points, tx, ty, tz) {
+  for (const p of points) {
+    p.x += tx;
+    p.y += ty;
+    p.z += tz;
+  }
+}
+
+const DISTANCE = 300;
+
+function project(points) {
+  return points.map((p) => ({
+    x: (DISTANCE / p.z) * p.x,
+    y: (DISTANCE / p.z) * p.y,
+  }));
+}
+
+// --- Cubo ---
+
+function makeCube() {
+  return [
+    new Point3D(-50, -50, 250),
+    new Point3D(50, -50, 250),
+    new Point3D(50, 50, 250),
+    new Point3D(-50, 50, 250),
+    new Point3D(-50, -50, 350),
+    new Point3D(50, -50, 350),
+    new Point3D(50, 50, 350),
+    new Point3D(-50, 50, 350),
+  ];
+}
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+
+function drawCube(points3D, color) {
+  const p = project(points3D);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+
+  function line(a, b) {
+    ctx.beginPath();
+    ctx.moveTo(centerX + a.x, centerY + a.y);
+    ctx.lineTo(centerX + b.x, centerY + b.y);
+    ctx.stroke();
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    line(p[i], p[i + 4]);
+    line(p[i], p[j]);
+    line(p[i + 4], p[j + 4]);
+  }
+}
+
+function render() {
+  const tx = Number(txInput.value);
+  const ty = Number(tyInput.value);
+  const tz = Number(tzInput.value);
+  txValue.textContent = tx;
+  tyValue.textContent = ty;
+  tzValue.textContent = tz;
+
+  const original = makeCube();
+  const translated = makeCube();
+  translate(translated, tx, ty, tz);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawCube(original, "#bbb");
+  drawCube(translated, "#e63946");
+}
+
+const txInput = document.getElementById("tx");
+const tyInput = document.getElementById("ty");
+const tzInput = document.getElementById("tz");
+const txValue = document.getElementById("txValue");
+const tyValue = document.getElementById("tyValue");
+const tzValue = document.getElementById("tzValue");
+
+[txInput, tyInput, tzInput].forEach((input) => input.addEventListener("input", render));
+
+render();
+</script>
+
+</body>
+</html>

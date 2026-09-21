@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Cubo 3D: Transformações e Projeção Cônica</title>
+<style>
+  body { font-family: sans-serif; background: #222; color: #eee; display: flex; flex-direction: column; align-items: center; }
+  canvas { background: white; margin-top: 20px; border: 1px solid #555; }
+  .panel { margin-top: 14px; display: flex; gap: 40px; font-size: 14px; }
+  .panel div { line-height: 1.6; }
+  .formula { font-size: 16px; }
+  .help { color: #999; font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h2>Cubo 3D: Transformações e Projeção Cônica</h2>
+<canvas id="canvas" width="800" height="600"></canvas>
+
+<div class="panel">
+  <div class="formula" id="formula"></div>
+  <div id="values"></div>
+</div>
+<div class="help">
+  Setas: transladar X/Y &nbsp;|&nbsp; Q/E: transladar Z &nbsp;|&nbsp;
+  A/D: rotacionar Y &nbsp;|&nbsp; W/S: rotacionar X &nbsp;|&nbsp; Z/X: rotacionar Z &nbsp;|&nbsp;
+  C: liga/desliga projeção cônica
+</div>
+
+<script>
+// =====================================================================
+// Ponto e Cubo
+// =====================================================================
+
+class Point {
+  constructor(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+  copy() {
+    return new Point(this.x, this.y, this.z);
+  }
+}
+
+class Cube {
+  constructor() {
+    // points[0] é o pivô da figura (não é desenhado como vértice do cubo)
+    this.points = [
+      new Point(0, 0, 0),
+      new Point(-50, -50, -50),
+      new Point(50, -50, -50),
+      new Point(50, 50, -50),
+      new Point(-50, 50, -50),
+      new Point(-50, -50, 50),
+      new Point(50, -50, 50),
+      new Point(50, 50, 50),
+      new Point(-50, 50, 50),
+    ];
+    this.translate(0, 0, 300); // posiciona o cubo à frente da câmera
+  }
+
+  translate(tx, ty, tz) {
+    for (const p of this.points) {
+      p.x += tx;
+      p.y += ty;
+      p.z += tz;
+    }
+  }
+
+  scale(sx, sy, sz) {
+    const pivot = this.points[0].copy();
+    this.translate(-pivot.x, -pivot.y, -pivot.z);
+    for (const p of this.points) {
+      p.x *= sx;
+      p.y *= sy;
+      p.z *= sz;
+    }
+    this.translate(pivot.x, pivot.y, pivot.z);
+  }
+
+  rotate(angleDegrees, axis) {
+    const angle = (angleDegrees * Math.PI) / 180;
+    const pivot = this.points[0].copy();
+    this.translate(-pivot.x, -pivot.y, -pivot.z);
+    for (const p of this.points) {
+      const { x, y, z } = p;
+      if (axis === "x") {
+        p.y = y * Math.cos(angle) - z * Math.sin(angle);
+        p.z = z * Math.cos(angle) + y * Math.sin(angle);
+      } else if (axis === "y") {
+        p.x = x * Math.cos(angle) - z * Math.sin(angle);
+        p.z = z * Math.cos(angle) + x * Math.sin(angle);
+      } else if (axis === "z") {
+        p.x = x * Math.cos(angle) - y * Math.sin(angle);
+        p.y = y * Math.cos(angle) + x * Math.sin(angle);
+      }
+    }
+    this.translate(pivot.x, pivot.y, pivot.z);
+  }
+}
+
+// =====================================================================
+// Projeção cônica: x' = (f/z) * x , y' = (f/z) * y
+// =====================================================================
+
+let CONICAL = true;
+const DISTANCE = 300; // f, a distância focal
+
+function project(p) {
+  if (CONICAL && p.z !== 0) {
+    const factor = DISTANCE / p.z;
+    return new Point(p.x * factor, p.y * factor, p.z);
+  }
+  return p.copy();
+}
+
+// =====================================================================
+// Desenho
+// =====================================================================
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const cube = new Cube();
+
+function line(p1, p2) {
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function draw() {
+  const p = cube.points.map((point) => {
+    const projected = project(point);
+    projected.x += canvas.width / 2;
+    projected.y += canvas.height / 2;
+    return projected;
+  });
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < 3; i++) {
+    line(p[i + 1], p[i + 2]);
+    line(p[i + 5], p[i + 5 + 1]);
+    line(p[i + 1], p[i + 5]);
+  }
+  line(p[4], p[1]);
+  line(p[8], p[4]);
+  line(p[5], p[8]);
+
+  updatePanel();
+}
+
+// =====================================================================
+// Painel com a fórmula e os valores ao vivo (vértice 1, de referência)
+// =====================================================================
+
+const formulaEl = document.getElementById("formula");
+const valuesEl = document.getElementById("values");
+
+function updatePanel() {
+  const reference = cube.points[1]; // um vértice fixo, sempre o mesmo, para acompanhar
+  const projected = project(reference);
+
+  formulaEl.innerHTML = CONICAL
+    ? `x' = (f / z) · x<br>y' = (f / z) · y<br>(f = DISTANCE = ${DISTANCE})`
+    : `x' = x<br>y' = y<br>(projeção cônica desligada)`;
+
+  valuesEl.innerHTML = CONICAL
+    ? `x = ${reference.x.toFixed(1)}, y = ${reference.y.toFixed(1)}, z = ${reference.z.toFixed(1)}<br>` +
+      `x' = (${DISTANCE} / ${reference.z.toFixed(1)}) · ${reference.x.toFixed(1)} = ${projected.x.toFixed(1)}<br>` +
+      `y' = (${DISTANCE} / ${reference.z.toFixed(1)}) · ${reference.y.toFixed(1)} = ${projected.y.toFixed(1)}`
+    : `x = ${reference.x.toFixed(1)}, y = ${reference.y.toFixed(1)}, z = ${reference.z.toFixed(1)}`;
+}
+
+// =====================================================================
+// Controles de teclado
+// =====================================================================
+
+const SPEED = 3;
+const ROTATION_SPEED = 2;
+
+const keyActions = {
+  ArrowLeft: () => cube.translate(-SPEED, 0, 0),
+  ArrowRight: () => cube.translate(SPEED, 0, 0),
+  ArrowUp: () => cube.translate(0, -SPEED, 0),
+  ArrowDown: () => cube.translate(0, SPEED, 0),
+  q: () => cube.translate(0, 0, -SPEED),
+  e: () => cube.translate(0, 0, SPEED),
+  a: () => cube.rotate(-ROTATION_SPEED, "y"),
+  d: () => cube.rotate(ROTATION_SPEED, "y"),
+  w: () => cube.rotate(ROTATION_SPEED, "x"),
+  s: () => cube.rotate(-ROTATION_SPEED, "x"),
+  z: () => cube.rotate(-ROTATION_SPEED, "z"),
+  x: () => cube.rotate(ROTATION_SPEED, "z"),
+};
+
+const heldKeys = new Set();
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "c" || event.key === "C") {
+    CONICAL = !CONICAL;
+    return;
+  }
+  heldKeys.add(event.key);
+});
+
+window.addEventListener("keyup", (event) => {
+  heldKeys.delete(event.key);
+});
+
+function loop() {
+  for (const key of heldKeys) {
+    if (keyActions[key]) keyActions[key]();
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 5: Rotação em Y</title>
+<style>
+  body { font-family: sans-serif; background: #222; color: #eee; display: flex; flex-direction: column; align-items: center; }
+  canvas { background: white; margin-top: 20px; border: 1px solid #555; }
+  .controls { margin-top: 12px; }
+  .controls label { display: flex; flex-direction: column; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h2>Exemplo 5: Rotação em Y (pivô = primeiro vértice)</h2>
+<canvas id="canvas" width="600" height="400"></canvas>
+
+<div class="controls">
+  <label>Ângulo: <span id="angleValue">0°</span>
+    <input type="range" id="angle" min="0" max="360" value="0">
+  </label>
+</div>
+
+<script>
+// --- Ponto e transformações (idênticos à página prática da wiki) ---
+
+class Point3D {
+  constructor(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+}
+
+function translate(points, tx, ty, tz) {
+  for (const p of points) {
+    p.x += tx;
+    p.y += ty;
+    p.z += tz;
+  }
+}
+
+function rotateY(points, angleRadians) {
+  const pivot = { x: points[0].x, y: points[0].y, z: points[0].z };
+
+  translate(points, -pivot.x, -pivot.y, -pivot.z);
+  for (const p of points) {
+    const x2 = p.x * Math.cos(angleRadians) + p.z * Math.sin(angleRadians);
+    const z2 = -p.x * Math.sin(angleRadians) + p.z * Math.cos(angleRadians);
+    p.x = x2;
+    p.z = z2;
+    // y não muda
+  }
+  translate(points, pivot.x, pivot.y, pivot.z);
+}
+
+const DISTANCE = 300;
+
+function project(points) {
+  return points.map((p) => ({
+    x: (DISTANCE / p.z) * p.x,
+    y: (DISTANCE / p.z) * p.y,
+  }));
+}
+
+// --- Cubo ---
+
+function makeCube() {
+  return [
+    new Point3D(-50, -50, 250),
+    new Point3D(50, -50, 250),
+    new Point3D(50, 50, 250),
+    new Point3D(-50, 50, 250),
+    new Point3D(-50, -50, 350),
+    new Point3D(50, -50, 350),
+    new Point3D(50, 50, 350),
+    new Point3D(-50, 50, 350),
+  ];
+}
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const centerX = canvas.width / 2;
+const centerY = canvas.height / 2;
+
+function drawCube(points3D, color) {
+  const p = project(points3D);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+
+  function line(a, b) {
+    ctx.beginPath();
+    ctx.moveTo(centerX + a.x, centerY + a.y);
+    ctx.lineTo(centerX + b.x, centerY + b.y);
+    ctx.stroke();
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    line(p[i], p[i + 4]);
+    line(p[i], p[j]);
+    line(p[i + 4], p[j + 4]);
+  }
+}
+
+function drawPivot(point3D) {
+  const [p] = project([point3D]);
+  ctx.beginPath();
+  ctx.arc(centerX + p.x, centerY + p.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "black";
+  ctx.fill();
+  ctx.font = "12px sans-serif";
+  ctx.fillText("pivô", centerX + p.x + 6, centerY + p.y - 6);
+}
+
+function render() {
+  const angleDeg = Number(angleInput.value);
+  angleValue.textContent = `${angleDeg}°`;
+
+  const original = makeCube();
+  const rotated = makeCube();
+  rotateY(rotated, (angleDeg * Math.PI) / 180);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawCube(original, "#bbb");
+  drawCube(rotated, "#457b9d");
+  drawPivot(original[0]);
+}
+
+const angleInput = document.getElementById("angle");
+const angleValue = document.getElementById("angleValue");
+
+angleInput.addEventListener("input", render);
+
+render();
+</script>
+
+</body>
+</html>
