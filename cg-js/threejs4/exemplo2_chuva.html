@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 2: Chuva Caindo</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #333; }
+</style>
+</head>
+<body>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 2, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const quantidade = 3000;
+const posicoes = new Float32Array(quantidade * 3);
+
+const ALTURA_TOPO = 15;
+const ALTURA_CHAO = -5;
+
+for (let i = 0; i < quantidade; i++) {
+  posicoes[i * 3 + 0] = (Math.random() - 0.5) * 20; // x
+  posicoes[i * 3 + 1] = Math.random() * (ALTURA_TOPO - ALTURA_CHAO) + ALTURA_CHAO; // y, distribuído por toda a altura
+  posicoes[i * 3 + 2] = (Math.random() - 0.5) * 20; // z
+}
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute("position", new THREE.BufferAttribute(posicoes, 3));
+
+const material = new THREE.PointsMaterial({
+  color: 0x88bbff,
+  size: 0.06,
+  transparent: true,
+  opacity: 0.7,
+});
+
+const rain = new THREE.Points(geometry, material);
+scene.add(rain);
+
+const VELOCIDADE_QUEDA = 0.15;
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  const posicoesArray = geometry.attributes.position.array;
+
+  for (let i = 0; i < quantidade; i++) {
+    const indiceY = i * 3 + 1;
+    posicoesArray[indiceY] -= VELOCIDADE_QUEDA;
+
+    // "Recicla" a partícula: quando sai por baixo, volta para o topo
+    if (posicoesArray[indiceY] < ALTURA_CHAO) {
+      posicoesArray[indiceY] = ALTURA_TOPO;
+    }
+  }
+
+  geometry.attributes.position.needsUpdate = true; // avisa o Three.js que os dados mudaram
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

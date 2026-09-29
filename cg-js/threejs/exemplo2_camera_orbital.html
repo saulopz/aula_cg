@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 2: Câmera com Controle Orbital</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #222; }
+  .help { position: absolute; top: 10px; left: 10px; color: #eee; font-family: sans-serif; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="help">Arraste para orbitar &nbsp;|&nbsp; Scroll para zoom &nbsp;|&nbsp; Botão direito para mover</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(3, 3, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// OrbitControls: permite orbitar a câmera com o mouse ao redor de um alvo
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true; // suaviza o movimento (inércia)
+
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshNormalMaterial();
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+
+// Eixos de referência (vermelho=X, verde=Y, azul=Z), ajuda a entender a orientação da câmera
+scene.add(new THREE.AxesHelper(3));
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update(); // necessário quando enableDamping está ativo
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

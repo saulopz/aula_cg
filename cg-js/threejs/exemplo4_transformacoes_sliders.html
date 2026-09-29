@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 4: Posição, Rotação e Escala</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; }
+  .panel {
+    position: absolute; top: 10px; left: 10px; color: #eee;
+    background: rgba(0,0,0,0.5); padding: 12px 16px; border-radius: 6px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: center;
+    font-size: 13px;
+  }
+  .panel span { text-align: right; min-width: 30px; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <label>Tx</label><input type="range" id="tx" min="-3" max="3" step="0.1" value="0"><span id="txValue">0</span>
+  <label>Ty</label><input type="range" id="ty" min="-3" max="3" step="0.1" value="0"><span id="tyValue">0</span>
+  <label>Tz</label><input type="range" id="tz" min="-3" max="3" step="0.1" value="0"><span id="tzValue">0</span>
+  <label>Rot X</label><input type="range" id="rx" min="0" max="360" value="0"><span id="rxValue">0°</span>
+  <label>Rot Y</label><input type="range" id="ry" min="0" max="360" value="0"><span id="ryValue">0°</span>
+  <label>Rot Z</label><input type="range" id="rz" min="0" max="360" value="0"><span id="rzValue">0°</span>
+  <label>Sx</label><input type="range" id="sx" min="0.2" max="3" step="0.1" value="1"><span id="sxValue">1.0</span>
+  <label>Sy</label><input type="range" id="sy" min="0.2" max="3" step="0.1" value="1"><span id="syValue">1.0</span>
+  <label>Sz</label><input type="range" id="sz" min="0.2" max="3" step="0.1" value="1"><span id="szValue">1.0</span>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(3, 3, 6);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+scene.add(new THREE.AxesHelper(3)); // referência: vermelho=X, verde=Y, azul=Z
+scene.add(new THREE.GridHelper(6, 6)); // "chão" de referência
+
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshNormalMaterial();
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+
+// --- Leitura dos sliders: exatamente as mesmas ideias de translate/rotate/scale
+// que já implementamos manualmente, só que agora aplicadas às propriedades do objeto ---
+
+function bindSlider(id, valueId, onChange, format = (v) => v) {
+  const input = document.getElementById(id);
+  const valueEl = document.getElementById(valueId);
+  const update = () => {
+    const value = Number(input.value);
+    valueEl.textContent = format(value);
+    onChange(value);
+  };
+  input.addEventListener("input", update);
+  update();
+}
+
+bindSlider("tx", "txValue", (v) => (cube.position.x = v));
+bindSlider("ty", "tyValue", (v) => (cube.position.y = v));
+bindSlider("tz", "tzValue", (v) => (cube.position.z = v));
+
+bindSlider("rx", "rxValue", (v) => (cube.rotation.x = (v * Math.PI) / 180), (v) => `${v}°`);
+bindSlider("ry", "ryValue", (v) => (cube.rotation.y = (v * Math.PI) / 180), (v) => `${v}°`);
+bindSlider("rz", "rzValue", (v) => (cube.rotation.z = (v * Math.PI) / 180), (v) => `${v}°`);
+
+bindSlider("sx", "sxValue", (v) => (cube.scale.x = v), (v) => v.toFixed(1));
+bindSlider("sy", "syValue", (v) => (cube.scale.y = v), (v) => v.toFixed(1));
+bindSlider("sz", "szValue", (v) => (cube.scale.z = v), (v) => v.toFixed(1));
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 2: Galeria de Materiais</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; }
+  .label {
+    position: absolute; color: #eee; font-size: 13px; text-align: center;
+    background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 2, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(4, 6, 4);
+scene.add(sun);
+
+const geometry = new THREE.SphereGeometry(1, 32, 32);
+const color = 0x3399ff;
+
+// As mesmas quatro esferas, cada uma com um material diferente,
+// sob a MESMA luz, para comparar o resultado lado a lado
+const materials = [
+  { name: "Basic (ignora luz)", material: new THREE.MeshBasicMaterial({ color }) },
+  { name: "Lambert (fosco)", material: new THREE.MeshLambertMaterial({ color }) },
+  { name: "Phong (brilho)", material: new THREE.MeshPhongMaterial({ color, shininess: 100 }) },
+  { name: "Standard (PBR)", material: new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.3 }) },
+];
+
+const spacing = 2.6;
+const startX = -((materials.length - 1) * spacing) / 2;
+
+materials.forEach(({ material }, i) => {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.x = startX + i * spacing;
+  scene.add(mesh);
+});
+
+// Rótulos HTML sobrepostos (posicionados manualmente, é só para esta demonstração)
+const labelsContainer = document.createElement("div");
+document.body.appendChild(labelsContainer);
+
+function updateLabels() {
+  labelsContainer.innerHTML = "";
+  materials.forEach(({ name }, i) => {
+    const worldPos = new THREE.Vector3(startX + i * spacing, -1.6, 0);
+    const screenPos = worldPos.clone().project(camera);
+    const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = name;
+    label.style.left = `${x - 60}px`;
+    label.style.top = `${y}px`;
+    labelsContainer.appendChild(label);
+  });
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateLabels();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

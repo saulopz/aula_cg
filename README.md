@@ -2,40 +2,55 @@
 
 Códigos de apoio das aulas práticas da disciplina **Computação Gráfica e Realidade Virtual** (Unisul).
 
-Material teórico completo na wiki: [Computação Gráfica](https://wiki.arisa.com.br/index.php?title=Computa%C3%A7%C3%A3o_Gr%C3%A1fica)
+Material teórico completo, cronograma e plano de ensino ficam na wiki: [Computação Gráfica](https://wiki.arisa.com.br/index.php?title=Computa%C3%A7%C3%A3o_Gr%C3%A1fica)
 
-Plano de ensino / cronograma: [PDF](https://saulo.arisa.com.br/aulas/cg/Unisul%2020262%20FP%20CG%20Cronograma.pdf)
+## Estrutura do Repositório
 
-Este README acompanha o andamento do semestre e é atualizado a cada aula nova.
+O repositório está organizado em duas frentes principais de implementação: JavaScript (web) e Python.
 
-## Estrutura por aula
+```text
+AULA_CG/
+├── cg-js/        # Exemplos e atividades em JavaScript (p5.js, Three.js, etc.)
+├── cg-python/    # Exemplos e atividades em Python (NumPy, OpenCV, Matplotlib, etc.)
+├── .gitignore    # Regras para ignorar arquivos temporários e dependências no Git
+├── image.jpg     # Imagem base para testes nos scripts de processamento de imagem
+├── LICENSE       # Termos de licença de código aberto do repositório (ex: GPLv3, MIT)
+└── README.md     # Documentação principal e instruções de uso do repositório
+```
 
-| # | Data | Conteúdo | Pasta | Linguagem |
-|---|------|----------|-------|-----------|
-| 1 | 12/08 | Apresentação da disciplina; Gráficos com Python e Turtle | *(aquecimento, sem pasta própria)* | Python (Turtle) |
-| 2 | 19/08 | Transformações em Imagens Matriciais | *(a confirmar)* | Python / JavaScript |
-| 3 | 26/08 | Filtros e Processamento de Imagens Digitais | `filters` | Python / JavaScript |
-| 4 | 02/09 | Exercícios (Matriciais e Filtros) | `filters` | JavaScript |
-| 5 | 09/09 | Geometria, Vetores e Trigonometria | `vectrig` | JavaScript |
-| 6 | 16/09 | TECHWEEK | — | — |
-| 7 | 23/09 | Transformações de Imagens Vetoriais no Plano (2D) | `transf2d` | JavaScript |
-| 8 | 30/09 | Transformações de Imagens Vetoriais no Espaço (3D) | *(a confirmar, sugestão: `transf3d`)* | JavaScript |
-| 9 | 07/10 | Espaço Euclidiano vs. Projeção Cônica | *(a confirmar)* | JavaScript |
-| 10 | 14/10 | Exercícios | *(a confirmar)* | JavaScript |
-| 11 | 21/10 | Avaliação A1 (1ª oportunidade) | — | — |
-| 12 | 28/10 | Introdução ao Three.js: cena, câmera e primitivas 3D | *(a confirmar, sugestão: `threejs`)* | JavaScript (Three.js) |
-| 13 | 04/11 | Materiais, texturas e shaders básicos (ShaderMaterial/GLSL) | *(a confirmar)* | JavaScript (Three.js) |
-| 14 | 11/11 | Iluminação, sombras e sistemas de partículas | *(a confirmar)* | JavaScript (Three.js) |
-| 15 | 18/11 | Realidade Virtual (WebXR) e mentoria de projeto | *(a confirmar)* | JavaScript (Three.js/WebXR) |
-| 16 | 25/11 | Laboratório de projeto (A3) | — (trabalho dos alunos) | — |
-| 17 | 02/12 | Apresentação Avaliação A3 | — | — |
-| 18 | 09/12 | Avaliação A2 | — | — |
+### Módulos JavaScript (`cg-js/`)
 
-## Como usar
+| Pasta | Conteúdo | Teoria / Foco |
+| --- | --- | --- |
+| `filters` | Filtros e Transformações em Imagens Matriciais | Processamento Digital de Imagens |
+| `threejs` | Introdução ao Three.js: cena, câmera, primitivas | Renderização 3D Web |
+| `threejs2` | Materiais, Texturas e Iluminação | Shading e Mapeamento |
+| `threejs3` | Shaders (GLSL) | Programmable Pipeline |
+| `threejs4` | Sistemas de Partículas | Efeitos Visuais e Simulação |
+| `threejs5` | Animação e Interatividade | Controle de Objetos e Tempo |
+| `transf2d` | Transformações Vetoriais no Plano (2D) | Álgebra Linear Aplicada |
+| `vect2d` | Vetores no Plano e Geometria Analítica 2D | Geometria Computacional |
+| `vect3d` | Perspectiva e Projeção Cônica | Projeções Geométricas |
+| `vectrig` | Geometria, Vetores e Trigonometria | Fundamentos Matemáticos |
 
-Os exemplos em JavaScript são arquivos `.html` autocontidos: basta abrir no navegador, sem servidor ou instalação. Os exemplos em Python usam Pygame e podem exigir `pip install pygame`.
+### Módulos Python (`cg-python/`)
 
-## Links relacionados
+| Pasta | Conteúdo | Teoria / Foco |
+| --- | --- | --- |
+| `filters` | Processamento de Imagens e Filtros Matriciais | Manipulação de Pixels/Arrays |
+| `transf2d` | Operações Matriciais de Transformação 2D | Álgebra Linear |
+| `vect2d` | Geometria Vetorial em 2D | Vetores e Matrizes |
+| `vect3d` | Espaço Tridimensional e Projeções | Geometria 3D |
 
-- [Plano de Ensino / Cronograma completo](https://wiki.arisa.com.br/index.php?title=Computa%C3%A7%C3%A3o_Gr%C3%A1fica#Plano_de_Ensino_/_Cronograma_/_Avaliações)
-- [Material Antigo (Python)](https://saulo.arisa.com.br/aulas/cg/index.html)
+---
+
+## Executando os Exemplos
+
+* **JavaScript (`cg-js/`):** A maioria dos exemplos em HTML/JS roda diretamente no navegador. Para exemplos com carregamento de ativos externos (texturas, modelos 3D, shaders), utilize um servidor local HTTP (como a extensão **Live Server** ou **Five Server** no VSCodium/VS Code, ou execute `python -m http.server` no diretório).
+* **Python (`cg-python/`):** Certifique-se de ter os pacotes necessários instalados no seu ambiente de desenvolvimento.
+
+---
+
+## Licença
+
+Este projeto é disponibilizado sob a licença **MIT**. Consulte o arquivo `LICENSE` para mais detalhes sobre os direitos de cópia, modificação e distribuição de software livre.

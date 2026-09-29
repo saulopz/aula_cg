@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 3: Modelo Animado (AnimationMixer)</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #223; font-family: sans-serif; }
+  #status { position: absolute; top: 10px; left: 10px; color: #fff; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="status">Carregando modelo...</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x223344);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(3, 2, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0.5, 0);
+
+const chao = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.MeshStandardMaterial({ color: 0x334455 })
+);
+chao.rotation.x = -Math.PI / 2;
+scene.add(chao);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const luzSol = new THREE.DirectionalLight(0xffffff, 2.0);
+luzSol.position.set(3, 5, 2);
+scene.add(luzSol);
+
+const loader = new GLTFLoader();
+const status = document.getElementById("status");
+
+// mixer e clock precisam existir fora do callback, porque são usados no loop de animação
+let mixer = null;
+const clock = new THREE.Clock();
+
+loader.load(
+  "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets/Models/Fox/glTF-Binary/Fox.glb",
+  (gltf) => {
+    const modelo = gltf.scene;
+
+    // Mesma técnica de normalização de tamanho dos exemplos anteriores
+    const caixa = new THREE.Box3().setFromObject(modelo);
+    const tamanho = caixa.getSize(new THREE.Vector3());
+    const maiorDimensao = Math.max(tamanho.x, tamanho.y, tamanho.z);
+    modelo.scale.setScalar(2 / maiorDimensao);
+
+    const caixaEscalada = new THREE.Box3().setFromObject(modelo);
+    const centro = caixaEscalada.getCenter(new THREE.Vector3());
+    modelo.position.x -= centro.x;
+    modelo.position.z -= centro.z;
+    modelo.position.y -= caixaEscalada.min.y;
+
+    scene.add(modelo);
+
+    // --- A parte nova desta aula: animação ---
+    // gltf.animations é uma lista de AnimationClip, um para cada animação
+    // que existia no arquivo (exportada do Blender). Vamos listar os nomes
+    // no console, para saber quais existem.
+    console.log("Animações disponíveis:", gltf.animations.map(clip => clip.name));
+
+    mixer = new THREE.AnimationMixer(modelo);
+    const primeiraAnimacao = gltf.animations[0];
+    const acao = mixer.clipAction(primeiraAnimacao);
+    acao.play();
+
+    status.textContent = `Modelo carregado! Tocando: "${primeiraAnimacao.name}"`;
+    setTimeout(() => status.style.display = "none", 2000);
+  },
+  undefined,
+  (erro) => {
+    console.error("Erro ao carregar o modelo:", erro);
+    status.textContent = "Erro ao carregar o modelo (veja o console).";
+  }
+);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  const delta = clock.getDelta(); // segundos desde o quadro anterior
+  if (mixer) {
+    mixer.update(delta); // avança a animação esse tanto de tempo
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

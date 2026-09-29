@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 2: Modelo com Iluminação, Sombra e Câmera Orbital</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+  #ui { position: absolute; top: 10px; left: 10px; color: #fff; font-size: 14px; }
+  button { margin-top: 6px; padding: 4px 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <div id="status">Carregando modelo...</div>
+  <button id="toggleLuz">Luz: ligada</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(2, 2, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true; // liga o cálculo de sombras (desligado por padrão)
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0.5, 0);
+
+// --- Chão, para receber a sombra do modelo ---
+const chao = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.MeshStandardMaterial({ color: 0x888888 })
+);
+chao.rotation.x = -Math.PI / 2;
+chao.receiveShadow = true; // recebe sombra, mas não precisa projetar
+scene.add(chao);
+
+// --- Luzes ---
+// Ambiente: ilumina tudo igualmente, um pouco, para nada ficar 100% preto nas sombras
+const luzAmbiente = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(luzAmbiente);
+
+// Direcional: a luz "principal", que também projeta sombra
+const luzSol = new THREE.DirectionalLight(0xffffff, 2.0);
+luzSol.position.set(3, 5, 2);
+luzSol.castShadow = true;
+scene.add(luzSol);
+
+// --- Carregando o modelo ---
+const loader = new GLTFLoader();
+const status = document.getElementById("status");
+
+loader.load(
+  "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets/Models/Duck/glTF-Binary/Duck.glb",
+  (gltf) => {
+    const modelo = gltf.scene;
+
+    // Mesma técnica do Exemplo 1: medir e normalizar o tamanho automaticamente
+    const caixa = new THREE.Box3().setFromObject(modelo);
+    const tamanho = caixa.getSize(new THREE.Vector3());
+    const maiorDimensao = Math.max(tamanho.x, tamanho.y, tamanho.z);
+    modelo.scale.setScalar(2 / maiorDimensao);
+
+    // Desta vez, em vez de centralizar no meio, apoiamos o modelo NO CHÃO:
+    // centralizamos em X/Z, mas empurramos em Y até a base encostar em y=0.
+    const caixaEscalada = new THREE.Box3().setFromObject(modelo);
+    const centro = caixaEscalada.getCenter(new THREE.Vector3());
+    modelo.position.x -= centro.x;
+    modelo.position.z -= centro.z;
+    modelo.position.y -= caixaEscalada.min.y;
+
+    // Um modelo importado é um Group com várias partes (malhas) dentro.
+    // castShadow/receiveShadow não são herdados automaticamente: precisamos
+    // percorrer toda a hierarquia (.traverse) e ligar em cada malha encontrada.
+    modelo.traverse((filho) => {
+      if (filho.isMesh) {
+        filho.castShadow = true;
+        filho.receiveShadow = true;
+      }
+    });
+
+    scene.add(modelo);
+
+    status.textContent = "Modelo carregado!";
+    setTimeout(() => status.style.display = "none", 1200);
+  },
+  undefined,
+  (erro) => {
+    console.error("Erro ao carregar o modelo:", erro);
+    status.textContent = "Erro ao carregar o modelo (veja o console).";
+  }
+);
+
+// --- Botão: liga/desliga a luz principal, para reforçar que material glTF sem luz fica preto ---
+const botao = document.getElementById("toggleLuz");
+botao.addEventListener("click", () => {
+  luzSol.visible = !luzSol.visible;
+  botao.textContent = luzSol.visible ? "Luz: ligada" : "Luz: desligada";
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

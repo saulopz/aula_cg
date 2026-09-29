@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 3: Shader Animado com o Tempo</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #222; }
+</style>
+</head>
+<body>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(2, 2, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 }, // "uniform": vem do JavaScript, igual para toda a malha neste quadro
+  },
+  vertexShader: `
+    void main() {
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime; // mesmo nome/tipo declarado acima em "uniforms"
+
+    void main() {
+      // sin() varia entre -1 e 1; ajustamos para variar entre 0 e 1
+      float brilho = sin(uTime) * 0.5 + 0.5;
+      gl_FragColor = vec4(brilho, 0.2, 1.0 - brilho, 1.0); // pulsa entre rosa e azul
+    }
+  `,
+});
+
+const geometry = new THREE.IcosahedronGeometry(1.5, 1);
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  material.uniforms.uTime.value += 0.02; // atualiza o "relógio" do shader a cada quadro
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

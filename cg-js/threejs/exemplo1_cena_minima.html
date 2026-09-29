@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 1: Cena Mínima</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #222; }
+</style>
+</head>
+<body>
+
+<!--
+  Você já está acostumado a importar bibliotecas assim:
+
+    <script src="alguma-lib.js"></script>
+
+  Isso funciona bem para scripts simples, mas o Three.js é organizado em
+  MÓDULOS: um arquivo principal que, por baixo dos panos, importa vários
+  outros arquivos internos (um para geometrias, outro para materiais, etc).
+  O <script src="..."> tradicional não sabe lidar com isso.
+
+  Para resolver isso, usamos dois recursos "nativos" do próprio navegador
+  (nada de instalar nada, nem empacotador tipo Webpack/Vite):
+-->
+
+<!--
+  1) O IMPORTMAP diz ao navegador: "toda vez que algum código pedir o
+     módulo chamado 'three', busque-o nesta URL". É só um apelido.
+     Sem isso, teríamos que escrever a URL completa do unpkg toda vez
+     que fôssemos importar alguma coisa do Three.js.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js"
+  }
+}
+</script>
+
+<!--
+  2) O type="module" (em vez de um <script> comum) diz ao navegador:
+     "este código pode usar 'import', e pode importar outros módulos".
+     É por causa desse type="module" que a linha abaixo funciona:
+     o navegador vê "three", olha no importmap acima, e busca o arquivo
+     certo automaticamente.
+
+     Duas diferenças importantes de um <script> normal:
+     - um <script type="module"> já roda em modo estrito e sempre
+       "atrasado" (equivalente a colocar 'defer'), então pode ficar
+       no <head> sem problema;
+     - variáveis declaradas aqui dentro NÃO viram globais (não aparecem
+       em window.alguma_coisa), diferente do <script src="...">
+       tradicional.
+-->
+<script type="module">
+import * as THREE from "three";
+// ...a partir daqui, THREE.Scene, THREE.PerspectiveCamera etc. já existem,
+// vindos do arquivo que o importmap apontou lá em cima.
+
+// 1. Cena
+const scene = new THREE.Scene();
+
+// 2. Câmera (fov, aspecto, plano próximo, plano distante)
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 5;
+
+// 3. Renderizador
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// 4. Malha (geometria + material)
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshNormalMaterial(); // colore cada face conforme sua direção, sem precisar de luz
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+
+// Loop de renderização
+function animate() {
+  requestAnimationFrame(animate);
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
+  renderer.render(scene, camera);
+}
+animate();
+
+// Mantém a proporção correta se a janela for redimensionada
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

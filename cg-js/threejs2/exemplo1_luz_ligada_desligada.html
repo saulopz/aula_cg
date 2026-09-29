@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 1: Luz Ligada e Desligada</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; }
+  .panel {
+    position: absolute; top: 10px; left: 10px; color: #eee;
+    background: rgba(0,0,0,0.5); padding: 10px 16px; border-radius: 6px; font-size: 14px;
+  }
+  button { margin-top: 6px; padding: 4px 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div id="status">Luz: ligada</div>
+  <button id="toggle">Ligar/Desligar luz direcional</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 1, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// Uma AmbientLight bem fraca, só para o objeto nunca ficar 100% preto
+const ambient = new THREE.AmbientLight(0xffffff, 0.15);
+scene.add(ambient);
+
+// A luz principal, que vamos ligar/desligar
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(5, 8, 5);
+scene.add(sun);
+
+// MeshStandardMaterial: PRECISA de luz para aparecer de verdade
+const geometry = new THREE.SphereGeometry(1.2, 32, 32);
+const material = new THREE.MeshStandardMaterial({ color: 0x3399ff, roughness: 0.5 });
+const sphere = new THREE.Mesh(geometry, material);
+scene.add(sphere);
+
+const statusEl = document.getElementById("status");
+document.getElementById("toggle").addEventListener("click", () => {
+  sun.visible = !sun.visible;
+  statusEl.textContent = `Luz: ${sun.visible ? "ligada" : "desligada"}`;
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

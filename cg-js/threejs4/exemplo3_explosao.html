@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 3: Explosão de Partículas</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; }
+  .help { position: absolute; top: 10px; left: 10px; color: #eee; font-size: 14px; }
+  button { margin-left: 10px; padding: 4px 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="help">Clique no botão para explodir de novo <button id="reset">Explodir!</button></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 2, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const quantidade = 800;
+
+// Duas arrays paralelas: uma de posição (o que o Three.js desenha) e
+// uma de velocidade (nosso próprio controle, não existe "de fábrica")
+const posicoes = new Float32Array(quantidade * 3);
+let velocidades = new Float32Array(quantidade * 3);
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute("position", new THREE.BufferAttribute(posicoes, 3));
+
+const material = new THREE.PointsMaterial({
+  color: 0xffaa33,
+  size: 0.1,
+  transparent: true,
+  opacity: 0.9,
+});
+
+const explosion = new THREE.Points(geometry, material);
+scene.add(explosion);
+
+const GRAVIDADE = -0.003; // mesma ideia da demonstração de vetores: puxa tudo para baixo aos poucos
+
+function explodir() {
+  const posicoesArray = geometry.attributes.position.array;
+
+  for (let i = 0; i < quantidade; i++) {
+    // Todas as partículas nascem no centro...
+    posicoesArray[i * 3 + 0] = 0;
+    posicoesArray[i * 3 + 1] = 0;
+    posicoesArray[i * 3 + 2] = 0;
+
+    // ...e cada uma ganha uma velocidade aleatória, em uma direção diferente
+    velocidades[i * 3 + 0] = (Math.random() - 0.5) * 0.3;
+    velocidades[i * 3 + 1] = Math.random() * 0.3; // sempre para cima, no início
+    velocidades[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+  }
+
+  geometry.attributes.position.needsUpdate = true;
+}
+
+explodir();
+document.getElementById("reset").addEventListener("click", explodir);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  const posicoesArray = geometry.attributes.position.array;
+
+  for (let i = 0; i < quantidade; i++) {
+    velocidades[i * 3 + 1] += GRAVIDADE; // a gravidade reduz a velocidade vertical aos poucos
+
+    posicoesArray[i * 3 + 0] += velocidades[i * 3 + 0];
+    posicoesArray[i * 3 + 1] += velocidades[i * 3 + 1];
+    posicoesArray[i * 3 + 2] += velocidades[i * 3 + 2];
+  }
+
+  geometry.attributes.position.needsUpdate = true;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

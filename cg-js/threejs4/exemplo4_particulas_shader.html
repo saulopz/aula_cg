@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 4: Partículas Coloridas por Shader (Bônus)</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #050510; }
+</style>
+</head>
+<body>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 8;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const quantidade = 3000;
+const posicoes = new Float32Array(quantidade * 3);
+const distancias = new Float32Array(quantidade); // um atributo EXTRA, além da posição: a distância de cada partícula ao centro
+
+for (let i = 0; i < quantidade; i++) {
+  const x = (Math.random() - 0.5) * 12;
+  const y = (Math.random() - 0.5) * 12;
+  const z = (Math.random() - 0.5) * 12;
+
+  posicoes[i * 3 + 0] = x;
+  posicoes[i * 3 + 1] = y;
+  posicoes[i * 3 + 2] = z;
+
+  distancias[i] = Math.sqrt(x * x + y * y + z * z); // guarda a distância já calculada
+}
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute("position", new THREE.BufferAttribute(posicoes, 3));
+geometry.setAttribute("aDistancia", new THREE.BufferAttribute(distancias, 1)); // "a" de "attribute"
+
+// Diferente do ShaderMaterial da aula passada (que só usava "position",
+// que já vem pronto), aqui declaramos nosso PRÓPRIO atributo extra
+// ("aDistancia"), um valor por partícula, calculado por nós.
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+  },
+  vertexShader: `
+    attribute float aDistancia; // nosso atributo extra, um valor por partícula
+    varying float vDistancia;   // repassa esse valor para o fragment shader
+    uniform float uTime;
+
+    void main() {
+      vDistancia = aDistancia;
+
+      vec3 pos = position;
+      pos.y += sin(uTime + aDistancia) * 0.3; // cada partícula "flutua" com uma fase diferente
+
+      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+      gl_PointSize = 4.0 / -mvPosition.z; // partículas mais distantes ficam menores (perspectiva)
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: `
+    varying float vDistancia;
+
+    void main() {
+      // Cor muda conforme a distância ao centro: perto = azul, longe = rosa
+      vec3 corPerto = vec3(0.2, 0.6, 1.0);
+      vec3 corLonge = vec3(1.0, 0.3, 0.7);
+      float t = clamp(vDistancia / 8.0, 0.0, 1.0);
+      vec3 cor = mix(corPerto, corLonge, t);
+
+      gl_FragColor = vec4(cor, 1.0);
+    }
+  `,
+});
+
+const particles = new THREE.Points(geometry, material);
+scene.add(particles);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  material.uniforms.uTime.value += 0.01;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
