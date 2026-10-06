@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exemplo 5: Controlando um Personagem (Demonstração)</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #9ad0ff; font-family: sans-serif; }
+  #hud {
+    position: absolute; top: 10px; left: 10px; color: #fff; font-size: 14px; line-height: 1.7;
+    background: rgba(0, 0, 0, 0.45); padding: 8px 12px; border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <b>WASD</b> ou <b>setas</b>: andar &nbsp; <b>Shift</b>: correr &nbsp; <b>Espaço</b>: pular &nbsp; <b>Mouse</b>: girar a câmera<br>
+  Estado: <b id="estado">parado</b> &nbsp;|&nbsp; Modelo: <span id="modelo">carregando...</span>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+// =====================================================================
+// DEMONSTRAÇÃO: não é preciso entender tudo. O objetivo é mostrar que
+// dá para ir por este caminho (um mini "jogo" de terceira pessoa) usando
+// só o que vimos: cena, câmera, modelos glTF, animações, vetores e
+// um loop de animação. Cada parte abaixo está comentada para quem
+// quiser explorar depois.
+// =====================================================================
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+// ---------------------------------------------------------------------
+// 1. CONFIGURAÇÕES (mexa nestes números para ver o efeito)
+// ---------------------------------------------------------------------
+const VEL_ANDAR = 2.5;       // unidades por segundo
+const VEL_CORRER = 6;        // unidades por segundo
+const VEL_PULO = 7;          // velocidade vertical inicial do pulo
+const GRAVIDADE = -22;       // mesma ideia da demonstração de vetores: puxa para baixo
+const SUAVIDADE_GIRO = 12;   // quanto maior, mais rápido o personagem vira para onde anda
+const TAMANHO_DESEJADO = 2.2;// maior dimensão do personagem, em unidades da cena
+const LIMITE_MUNDO = 95;     // o personagem não passa desta distância da origem
+
+// Se o personagem andar "de costas", troque por Math.PI (alguns modelos
+// são exportados olhando para o outro lado).
+const GIRO_DO_MODELO = 0;
+
+// Modelos tentados em ordem: se o primeiro não carregar, usa o próximo.
+// O RobotExpressive tem pulo; a raposa (reserva) não tem, então o pulo
+// acontece (a física funciona) mas sem animação própria.
+const MODELOS = [
+  {
+    nome: "RobotExpressive",
+    url: "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r169/examples/models/gltf/RobotExpressive/RobotExpressive.glb",
+  },
+  {
+    nome: "Fox (reserva, sem animação de pulo)",
+    url: "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets/Models/Fox/glTF-Binary/Fox.glb",
+  },
+];
+
+// Nome da animação de cada estado, em cada modelo. A primeira que existir
+// no arquivo é usada. Para trocar de personagem, ajuste esta tabela com os
+// nomes que aparecem no console ("Animações disponíveis").
+const NOMES_ANIMACAO = {
+  idle: ["Idle", "Survey"],
+  walk: ["Walking", "Walk"],
+  run: ["Running", "Run"],
+  jump: ["Jump"],
+};
+
+const ROTULOS = { idle: "parado", walk: "andando", run: "correndo", jump: "pulando" };
+
+// ---------------------------------------------------------------------
+// 2. CENA, CÂMERA E RENDERER (igual às aulas anteriores)
+// ---------------------------------------------------------------------
+const COR_CEU = 0x9ad0ff;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(COR_CEU);
+scene.fog = new THREE.Fog(COR_CEU, 25, 90); // névoa: o fundo "some" suavemente na distância
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 3, -7); // começa atrás do personagem (que olha para +Z)
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// OrbitControls continua girando a câmera com o mouse, mas agora ela
+// orbita em volta do PERSONAGEM (veja "seguir com a câmera", mais abaixo).
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 3;
+controls.maxDistance = 14;
+controls.maxPolarAngle = Math.PI / 2 - 0.05; // não deixa a câmera ir para baixo do chão
+controls.target.set(0, 1.2, 0);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x557755, 1.4)); // luz do céu + reflexo do chão
+const sol = new THREE.DirectionalLight(0xffffff, 1.6);
+sol.position.set(10, 20, 5);
+scene.add(sol);
+
+// ---------------------------------------------------------------------
+// 3. MUNDO: chão quadriculado (textura desenhada em canvas, como no
+//    Exemplo 3 da aula de texturas) e algumas árvores para dar noção
+//    de movimento.
+// ---------------------------------------------------------------------
+function criarTexturaGrama() {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#4f9d4f";
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.fillStyle = "#5bac5b";
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.fillRect(64, 64, 64, 64);
+
+  const textura = new THREE.CanvasTexture(canvas);
+  textura.colorSpace = THREE.SRGBColorSpace;
+  textura.wrapS = textura.wrapT = THREE.RepeatWrapping;
+  textura.repeat.set(100, 100);
+  return textura;
+}
+
+const chao = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshStandardMaterial({ map: criarTexturaGrama() })
+);
+chao.rotation.x = -Math.PI / 2;
+scene.add(chao);
+
+function criarArvore(x, z) {
+  const arvore = new THREE.Group();
+  const tronco = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8),
+    new THREE.MeshStandardMaterial({ color: 0x7a5230 })
+  );
+  tronco.position.y = 0.75;
+  const copa = new THREE.Mesh(
+    new THREE.ConeGeometry(1.2, 3, 8),
+    new THREE.MeshStandardMaterial({ color: 0x2f7d32 })
+  );
+  copa.position.y = 3;
+  arvore.add(tronco, copa);
+  arvore.position.set(x, 0, z);
+  scene.add(arvore);
+}
+
+// As árvores são espalhadas de forma UNIFORME pela área (por isso a raiz quadrada:
+// sortear o raio direto deixaria tudo amontoado perto do centro). Começam a 8
+// unidades da origem para não cobrir o personagem na largada.
+// Obs.: não há colisão. A câmera e o personagem atravessam as árvores.
+const RAIO_MIN = 8, RAIO_MAX = 90;
+for (let i = 0; i < 80; i++) {
+  const angulo = Math.random() * Math.PI * 2;
+  const raio = Math.sqrt(RAIO_MIN ** 2 + Math.random() * (RAIO_MAX ** 2 - RAIO_MIN ** 2));
+  criarArvore(Math.cos(angulo) * raio, Math.sin(angulo) * raio);
+}
+
+// Sombra "de mentirinha": um círculo escuro no chão, embaixo do personagem.
+// É um truque barato e funciona bem para dar noção de altura no pulo.
+const sombra = new THREE.Mesh(
+  new THREE.CircleGeometry(0.7, 24),
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false })
+);
+sombra.rotation.x = -Math.PI / 2;
+sombra.position.y = 0.02;
+scene.add(sombra);
+
+// ---------------------------------------------------------------------
+// 4. PERSONAGEM
+//    "jogador" é um Group que representa o personagem no mundo: é ele
+//    que mexemos (position, rotation). O modelo carregado fica DENTRO
+//    dele, com os pés alinhados à origem do grupo.
+// ---------------------------------------------------------------------
+const jogador = new THREE.Group();
+scene.add(jogador);
+
+const hudEstado = document.getElementById("estado");
+const hudModelo = document.getElementById("modelo");
+
+let mixer = null;       // o "tocador" de animações (criado quando o modelo chega)
+const acoes = {};       // estado ("idle", "walk", ...) -> AnimationAction
+let acaoAtual = null;   // a animação tocando agora
+let estado = "idle";
+
+const loader = new GLTFLoader();
+
+function carregarModelo(indice) {
+  if (indice >= MODELOS.length) {
+    hudModelo.textContent = "nenhum modelo carregou (veja o console)";
+    return;
+  }
+  const { nome, url } = MODELOS[indice];
+  loader.load(
+    url,
+    (gltf) => prepararPersonagem(gltf, nome),
+    undefined,
+    (erro) => {
+      console.warn(`Não consegui carregar "${nome}", tentando o próximo.`, erro);
+      carregarModelo(indice + 1);
+    }
+  );
+}
+
+function prepararPersonagem(gltf, nome) {
+  const modelo = gltf.scene;
+  modelo.rotation.y = GIRO_DO_MODELO;
+
+  // Mesma técnica dos exemplos anteriores: medir o modelo e normalizar o
+  // tamanho, em vez de chutar uma escala.
+  const caixa = new THREE.Box3().setFromObject(modelo);
+  const tamanho = caixa.getSize(new THREE.Vector3());
+  modelo.scale.setScalar(TAMANHO_DESEJADO / Math.max(tamanho.x, tamanho.y, tamanho.z));
+
+  // Centraliza em X/Z e apoia os pés em y = 0 (dentro do grupo "jogador").
+  const caixaEscalada = new THREE.Box3().setFromObject(modelo);
+  const centro = caixaEscalada.getCenter(new THREE.Vector3());
+  modelo.position.x -= centro.x;
+  modelo.position.z -= centro.z;
+  modelo.position.y -= caixaEscalada.min.y;
+  jogador.add(modelo);
+
+  // Cria uma AnimationAction para cada estado, procurando pelo nome na tabela.
+  console.log("Animações disponíveis:", gltf.animations.map((clip) => clip.name));
+  mixer = new THREE.AnimationMixer(modelo);
+  for (const [chave, candidatos] of Object.entries(NOMES_ANIMACAO)) {
+    const clip = candidatos
+      .map((nomeClip) => gltf.animations.find((c) => c.name === nomeClip))
+      .find(Boolean);
+    if (clip) acoes[chave] = mixer.clipAction(clip);
+  }
+
+  // O pulo toca UMA vez e fica parado no último quadro até o personagem pousar.
+  if (acoes.jump) {
+    acoes.jump.setLoop(THREE.LoopOnce, 1);
+    acoes.jump.clampWhenFinished = true;
+  }
+
+  acaoAtual = acoes.idle ?? null;
+  if (acaoAtual) acaoAtual.play();
+  hudModelo.textContent = nome;
+}
+
+carregarModelo(0);
+
+// ---------------------------------------------------------------------
+// 5. TECLADO
+//    Um Set guarda todas as teclas seguradas neste momento. É a mesma
+//    solução do problema das teclas no Pygame (conjunto de teclas
+//    pressionadas, em vez de uma variável só): soltar uma tecla não
+//    interfere nas outras.
+// ---------------------------------------------------------------------
+const teclas = new Set();
+
+window.addEventListener("keydown", (e) => {
+  teclas.add(e.code);
+  // impede que espaço e setas rolem a página
+  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+});
+window.addEventListener("keyup", (e) => teclas.delete(e.code));
+window.addEventListener("blur", () => teclas.clear()); // evita "tecla presa" ao trocar de janela
+
+const pressionada = (...codigos) => codigos.some((c) => teclas.has(c));
+
+// ---------------------------------------------------------------------
+// 6. TROCA DE ANIMAÇÃO (a mesma ideia do Exemplo 4, com transição suave)
+// ---------------------------------------------------------------------
+function trocarAnimacao(novoEstado) {
+  estado = novoEstado;
+  hudEstado.textContent = ROTULOS[novoEstado] + (acoes[novoEstado] ? "" : " (sem animação neste modelo)");
+
+  const nova = acoes[novoEstado] ?? null;
+  if (nova === acaoAtual) return;
+
+  if (nova) {
+    nova.reset().play();
+    if (acaoAtual) acaoAtual.crossFadeTo(nova, 0.25, false); // mistura as duas em 0,25 s
+    else nova.fadeIn(0.25);
+  } else if (acaoAtual) {
+    acaoAtual.fadeOut(0.25);
+  }
+  acaoAtual = nova;
+}
+
+// ---------------------------------------------------------------------
+// 7. LÓGICA DO JOGO: roda uma vez por quadro
+// ---------------------------------------------------------------------
+const CIMA = new THREE.Vector3(0, 1, 0);
+const frente = new THREE.Vector3();
+const direita = new THREE.Vector3();
+const direcao = new THREE.Vector3();
+
+let velY = 0;      // velocidade vertical (para o pulo)
+let noAr = false;
+
+function atualizar(dt) {
+  if (!mixer) return; // modelo ainda carregando
+
+  // --- Direção do movimento, RELATIVA À CÂMERA ---
+  // "Frente" é para onde a câmera olha, mas só no plano do chão (zerando o Y).
+  // "Direita" sai do produto vetorial entre "frente" e "cima" (aula de vetores!).
+  camera.getWorldDirection(frente);
+  frente.y = 0;
+  frente.normalize();
+  direita.crossVectors(frente, CIMA);
+
+  direcao.set(0, 0, 0);
+  if (pressionada("KeyW", "ArrowUp")) direcao.add(frente);
+  if (pressionada("KeyS", "ArrowDown")) direcao.sub(frente);
+  if (pressionada("KeyD", "ArrowRight")) direcao.add(direita);
+  if (pressionada("KeyA", "ArrowLeft")) direcao.sub(direita);
+
+  const andando = direcao.lengthSq() > 0;
+  if (andando) direcao.normalize(); // na diagonal não pode andar mais rápido
+  const correndo = andando && pressionada("ShiftLeft", "ShiftRight");
+  const velocidade = correndo ? VEL_CORRER : VEL_ANDAR;
+
+  // --- Pulo: velocidade vertical + gravidade, como na demonstração do chute ---
+  if (!noAr && pressionada("Space")) {
+    velY = VEL_PULO;
+    noAr = true;
+  }
+  if (noAr) {
+    velY += GRAVIDADE * dt;
+    jogador.position.y += velY * dt;
+    if (jogador.position.y <= 0) { // pousou
+      jogador.position.y = 0;
+      velY = 0;
+      noAr = false;
+    }
+  }
+
+  // --- Movimento horizontal (distância = velocidade x tempo) ---
+  const xAntes = jogador.position.x;
+  const zAntes = jogador.position.z;
+
+  if (andando) {
+    jogador.position.x += direcao.x * velocidade * dt;
+    jogador.position.z += direcao.z * velocidade * dt;
+    jogador.position.x = THREE.MathUtils.clamp(jogador.position.x, -LIMITE_MUNDO, LIMITE_MUNDO);
+    jogador.position.z = THREE.MathUtils.clamp(jogador.position.z, -LIMITE_MUNDO, LIMITE_MUNDO);
+
+    // Vira o personagem para onde ele anda, pelo caminho mais curto (sem dar volta inteira).
+    const anguloAlvo = Math.atan2(direcao.x, direcao.z);
+    let diferenca = anguloAlvo - jogador.rotation.y;
+    diferenca = THREE.MathUtils.euclideanModulo(diferenca + Math.PI, Math.PI * 2) - Math.PI;
+    jogador.rotation.y += diferenca * Math.min(1, SUAVIDADE_GIRO * dt);
+  }
+
+  // --- Escolhe a animação conforme o que está acontecendo ---
+  let novoEstado = "idle";
+  if (noAr) novoEstado = "jump";
+  else if (correndo) novoEstado = "run";
+  else if (andando) novoEstado = "walk";
+  if (novoEstado !== estado) trocarAnimacao(novoEstado);
+
+  // --- Seguir com a câmera ---
+  // A câmera recebe o mesmo deslocamento horizontal do personagem (assim
+  // mantém a distância e o ângulo que o mouse escolheu), e o ponto para
+  // onde ela olha acompanha o personagem. O Y da câmera não acompanha o
+  // pulo: assim o personagem sobe e a câmera fica firme.
+  camera.position.x += jogador.position.x - xAntes;
+  camera.position.z += jogador.position.z - zAntes;
+  controls.target.set(jogador.position.x, 1.2, jogador.position.z);
+
+  // A sombra fica no chão embaixo do personagem e encolhe quando ele sobe.
+  sombra.position.set(jogador.position.x, 0.02, jogador.position.z);
+  sombra.scale.setScalar(1 - Math.min(jogador.position.y, 1.5) * 0.25);
+}
+
+// ---------------------------------------------------------------------
+// 8. LOOP PRINCIPAL
+// ---------------------------------------------------------------------
+const relogio = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  // dt = segundos desde o quadro anterior. Limitamos a 0,05 s para o
+  // personagem não "teletransportar" se a aba ficar parada por um tempo.
+  const dt = Math.min(relogio.getDelta(), 0.05);
+
+  atualizar(dt);
+  if (mixer) mixer.update(dt);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
