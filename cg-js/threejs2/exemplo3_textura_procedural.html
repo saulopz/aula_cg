@@ -64,6 +64,7 @@ function createCheckerTexture(size = 256, squares = 8) {
   }
 
   const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace; // textura de cor: sem isto, as cores ficam desbotadas
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   return texture;
